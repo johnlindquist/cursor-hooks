@@ -5,6 +5,24 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "hooks"],
+  "definitions": {
+    "hookDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command to execute. Supports absolute paths, paths relative to hooks.json, or shell snippets."
+        }
+      }
+    },
+    "hooksArray": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/hookDefinition" }
+    }
+  },
   "properties": {
     "version": {
       "type": "integer",
@@ -15,26 +33,15 @@
       "type": "object",
       "minProperties": 1,
       "description": "Hook event name to hook definition mappings.",
-      "propertyNames": {
-        "type": "string",
-        "pattern": "^[A-Za-z0-9_.:-]+$",
-        "description": "Hook event name (e.g. beforeShellExecution). Future events may introduce new names."
+      "properties": {
+        "beforeShellExecution": { "$ref": "#/definitions/hooksArray" },
+        "beforeMCPExecution": { "$ref": "#/definitions/hooksArray" },
+        "afterFileEdit": { "$ref": "#/definitions/hooksArray" },
+        "beforeReadFile": { "$ref": "#/definitions/hooksArray" },
+        "beforeSubmitPrompt": { "$ref": "#/definitions/hooksArray" },
+        "stop": { "$ref": "#/definitions/hooksArray" }
       },
-      "additionalProperties": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["command"],
-          "properties": {
-            "command": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Command to execute. Supports absolute paths, paths relative to hooks.json, or shell snippets."
-            }
-          }
-        }
-      }
+      "additionalProperties": false
     }
   }
 }

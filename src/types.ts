@@ -214,11 +214,11 @@ export interface HookCommandConfig {
 
 /**
  * Top-level hooks.json structure. Hook names align with documented events
- * but future events may also appear.
+ * and are limited to the currently supported list.
  *
  * Docs: Hooks configuration – hooks.json schema.
  */
 export interface CursorHooksConfig {
     version: 1;
-    hooks: Record<string, HookCommandConfig[]>;
+    hooks: Partial<Record<HookEventName, HookCommandConfig[]>>;
 }
