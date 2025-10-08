@@ -217,7 +217,6 @@ export function handleBeforeSubmitPrompt(
   if (input.prompt.length > 2000) {
     return {
       continue: false,
-      userMessage: "Prompt too long. Trim it before sending.",
     };
   }
 

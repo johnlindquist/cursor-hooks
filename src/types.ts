@@ -115,11 +115,6 @@ export interface BeforeReadFilePayload extends HookPayloadBase {
 
 export interface BeforeReadFileResponse {
     permission: "allow" | "deny";
-    /**
-     * Optional redacted content to replace the original file contents.
-     * Not currently documented but provided for future compatibility.
-     */
-    content?: string;
 }
 
 /**
@@ -135,7 +130,6 @@ export interface BeforeSubmitPromptPayload extends HookPayloadBase {
 
 export interface BeforeSubmitPromptResponse {
     continue: boolean;
-    userMessage?: string;
 }
 
 /**
