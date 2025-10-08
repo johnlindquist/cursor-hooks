@@ -198,3 +198,27 @@ export function isHookPayloadOf<Event extends HookEventName>(
         (payload as HookPayloadBase).hook_event_name === event
     );
 }
+
+/**
+ * Hook process configuration definition used within hooks.json.
+ *
+ * Docs: Hooks configuration – hook definitions.
+ */
+export interface HookCommandConfig {
+    /**
+     * Command executed when the hook fires. Accepts absolute paths, relative
+     * paths (from hooks.json), or shell command strings.
+     */
+    command: string;
+}
+
+/**
+ * Top-level hooks.json structure. Hook names align with documented events
+ * but future events may also appear.
+ *
+ * Docs: Hooks configuration – hooks.json schema.
+ */
+export interface CursorHooksConfig {
+    version: 1;
+    hooks: Record<string, HookCommandConfig[]>;
+}
