@@ -1,0 +1,46 @@
+{
+  "name": "cursor-hooks",
+  "version": "0.1.0",
+  "description": "Type definitions and helpers for building Cursor agent hooks.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "release": "semantic-release"
+  },
+  "keywords": [
+    "cursor",
+    "hooks",
+    "type-definitions",
+    "agent"
+  ],
+  "author": "Cursor Community",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnlindquist/cursor-hooks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/johnlindquist/cursor-hooks/issues"
+  },
+  "homepage": "https://cursor.com/docs/agent/hooks",
+  "devDependencies": {
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/npm": "^12.0.2",
+    "semantic-release": "^24.2.9",
+    "typescript": "^5.4.0"
+  }
+}
