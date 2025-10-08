@@ -20,11 +20,11 @@ import {
   type BeforeShellExecutionResponse,
 } from "cursor-hooks";
 
-const rawInput = await Bun.stdin.json();
+const rawInput: unknown = JSON.parse(await Bun.stdin.text());
 
 if (!isHookPayloadOf(rawInput, "beforeShellExecution")) {
   console.error("Unexpected hook payload", rawInput);
-  Bun.exit(1);
+  process.exit(1);
 }
 
 const input: BeforeShellExecutionPayload = rawInput;
@@ -263,7 +263,7 @@ if (handler) {
   }
 } else {
   console.error(`No handler for ${payload.hook_event_name}`);
-  Bun.exit(1);
+  process.exit(1);
 }
 ```
 
