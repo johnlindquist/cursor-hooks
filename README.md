@@ -42,6 +42,7 @@ Wire it up in `hooks.json`:
 ```json
 {
   "version": 1,
+  "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
   "hooks": {
     "beforeShellExecution": [
       { "command": "./hooks/before-shell-execution.ts" }
@@ -69,6 +70,24 @@ if (!isHookPayloadOf(rawInput, "stop")) {
 
 console.log(JSON.stringify({}));
 ```
+
+## hooks.json schema
+
+Author your configuration files with JSON Schema validation by pointing `$schema` at the published schema in this package:
+
+```json
+{
+  "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      { "command": "./hooks/format.ts" }
+    ]
+  }
+}
+```
+
+If you prefer a pinned version or have offline tooling, download `schema/hooks.schema.json` directly from this repository or install the package and reference it locally.
 
 ## Hook-by-hook templates
 

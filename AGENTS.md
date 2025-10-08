@@ -10,6 +10,10 @@ Key capabilities offered by the library:
 
 Combine these helpers with the platform features below to ship production-ready hooks quickly.
 
+## Publishing and release workflow
+
+When you ask this agent to "publish" or "push", treat it as a request to wrap up the work using Conventional Commit messages so semantic-release can infer the next version. After completing the requested changes, follow the conventional commit flow and run the release steps expected by semantic-release.
+
 ## Cursor hook platform overview
 
 Hooks let you observe, control, and extend the agent loop using custom scripts. Hooks are spawned processes that communicate over stdio using JSON in both directions. They run before or after defined stages of the agent loop and can observe, block, or modify behavior.
