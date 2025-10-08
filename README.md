@@ -8,12 +8,11 @@ TypeScript definitions and helpers for building [Cursor agent hooks](https://cur
 npm install cursor-hooks
 ```
 
-## Quick start (TypeScript)
+## Quick start (Bun + TypeScript)
 
-Create a hook script (example uses Bun, but works with any TS runner):
+Install [Bun](https://bun.sh/) so the same TypeScript scripts run identically on macOS, Linux, and Windows. Then create a hook script:
 
 ```ts
-#!/usr/bin/env bun
 import {
   isHookPayloadOf,
   type BeforeShellExecutionPayload,
@@ -45,7 +44,7 @@ Wire it up in `hooks.json`:
   "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
   "hooks": {
     "beforeShellExecution": [
-      { "command": "./hooks/before-shell-execution.ts" }
+      { "command": "bun run ./hooks/before-shell-execution.ts" }
     ]
   }
 }
@@ -81,7 +80,7 @@ Author your configuration files with JSON Schema validation by pointing `$schema
   "version": 1,
   "hooks": {
     "afterFileEdit": [
-      { "command": "./hooks/format.ts" }
+      { "command": "bun run ./hooks/format.ts" }
     ]
   }
 }
