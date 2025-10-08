@@ -19,6 +19,7 @@
   ],
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "clean": "rm -rf dist",
     "release": "semantic-release"
   },
