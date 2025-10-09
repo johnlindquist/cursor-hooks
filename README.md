@@ -27,25 +27,29 @@ bun install cursor-hooks
 
 ### 4. Create a hooks.json configuration
 
-In your `.cursor` directory, create a `hooks.json` file:
+In your `.cursor` directory (at the project root), create a `hooks.json` file.
+
+**Important:** Hook command paths are relative to the `.cursor/hooks.json` file location.
 
 ```json
 {
   "version": 1,
-  "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
   "hooks": {
     "beforeShellExecution": [
-      { "command": "bun run .cursor/hooks/before-shell-execution.ts" }
-    ],
-    "beforeSubmitPrompt": [
-      { "command": "bun run .cursor/hooks/before-submit-prompt.ts" }
+      {
+        "command": "bun run hooks/before-shell-execution.ts"
+      }
     ],
     "afterFileEdit": [
-      { "command": "bun run .cursor/hooks/after-file-edit.ts" }
+      {
+        "command": "bun run hooks/after-file-edit.ts"
+      }
     ]
   }
 }
 ```
+
+This configuration assumes your hooks are in `.cursor/hooks/` and the `hooks.json` is at `.cursor/hooks.json`.
 
 ## Real-world Examples
 
