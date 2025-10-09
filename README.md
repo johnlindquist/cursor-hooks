@@ -1,42 +1,33 @@
 # cursor-hooks
 
-TypeScript definitions and helpers for building [Cursor agent hooks](https://cursor.com/docs/agent/hooks). Copy/paste the snippets below to scaffold fully typed hook scripts for any event.
+TypeScript definitions and helpers for building [Cursor agent hooks](https://cursor.com/docs/agent/hooks).
 
-## Install
+## Installation
+
+### 1. Create a hooks directory in your project
 
 ```bash
-npm install cursor-hooks
+mkdir -p .cursor/hooks
+cd .cursor/hooks
 ```
 
-## Quick start (Bun + TypeScript)
+### 2. Initialize a Bun project
 
-Install [Bun](https://bun.sh/) so the same TypeScript scripts run identically on macOS, Linux, and Windows. Then create a hook script:
+Install [Bun](https://bun.sh/) if you haven't already, then initialize:
 
-```ts
-import {
-  isHookPayloadOf,
-  type BeforeShellExecutionPayload,
-  type BeforeShellExecutionResponse,
-} from "cursor-hooks";
-
-const rawInput: unknown = JSON.parse(await Bun.stdin.text());
-
-if (!isHookPayloadOf(rawInput, "beforeShellExecution")) {
-  console.error("Unexpected hook payload", rawInput);
-  process.exit(1);
-}
-
-const input: BeforeShellExecutionPayload = rawInput;
-
-const response: BeforeShellExecutionResponse = {
-  permission: input.command.includes("rm -rf") ? "deny" : "allow",
-  userMessage: "Command reviewed.",
-};
-
-console.log(JSON.stringify(response));
+```bash
+bun init -y
 ```
 
-Wire it up in `hooks.json`:
+### 3. Install cursor-hooks
+
+```bash
+bun install cursor-hooks
+```
+
+### 4. Create a hooks.json configuration
+
+In your `.cursor` directory, create a `hooks.json` file:
 
 ```json
 {
@@ -44,35 +35,223 @@ Wire it up in `hooks.json`:
   "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
   "hooks": {
     "beforeShellExecution": [
-      { "command": "bun run ./hooks/before-shell-execution.ts" }
+      { "command": "bun run .cursor/hooks/before-shell-execution.ts" }
+    ],
+    "beforeSubmitPrompt": [
+      { "command": "bun run .cursor/hooks/before-submit-prompt.ts" }
+    ],
+    "afterFileEdit": [
+      { "command": "bun run .cursor/hooks/after-file-edit.ts" }
     ]
   }
 }
 ```
 
-## Quick start (JavaScript / Node)
+## Real-world Examples
 
-```js
-#!/usr/bin/env node
-import {
-  isHookPayloadOf,
-} from "cursor-hooks";
+### Example 1: Block npm commands, enforce bun
 
-const buffers = [];
-for await (const chunk of process.stdin) buffers.push(chunk);
-const rawInput = JSON.parse(Buffer.concat(buffers).toString("utf8"));
+`before-shell-execution.ts`:
 
-if (!isHookPayloadOf(rawInput, "stop")) {
-  console.error("Unexpected payload for stop hook", rawInput);
-  process.exit(1);
-}
+```ts
+import type { BeforeShellExecutionPayload, BeforeShellExecutionResponse } from "cursor-hooks";
 
-console.log(JSON.stringify({}));
+const input: BeforeShellExecutionPayload = await Bun.stdin.json();
+
+const startsWithNpm = input.command.startsWith("npm") || input.command.includes(" npm ");
+
+const output: BeforeShellExecutionResponse = {
+    permission: startsWithNpm ? "deny" : "allow",
+    agentMessage: startsWithNpm ? "npm is not allowed, always use bun instead" : undefined,
+};
+
+console.log(JSON.stringify(output, null, 2));
 ```
 
-## hooks.json schema
+### Example 2: Gate prompts with a keyword
 
-Author your configuration files with JSON Schema validation by pointing `$schema` at the published schema in this package:
+`before-submit-prompt.ts`:
+
+```ts
+import type { BeforeSubmitPromptPayload, BeforeSubmitPromptResponse } from "cursor-hooks";
+
+const input: BeforeSubmitPromptPayload = await Bun.stdin.json();
+
+const output: BeforeSubmitPromptResponse = {
+    continue: input.prompt.includes("allow"),
+};
+
+console.log(JSON.stringify(output, null, 2));
+```
+
+### Example 3: Auto-format and log file edits
+
+`after-file-edit.ts`:
+
+```ts
+import type { AfterFileEditPayload } from "cursor-hooks";
+
+import { appendFile, readFile, writeFile } from "node:fs/promises"
+import { join } from "node:path"
+
+const input: AfterFileEditPayload = await Bun.stdin.json();
+
+if (input.file_path.endsWith(".ts")) {
+    const result = await Bun.$`bunx @biomejs/biome lint --fix --unsafe --verbose ${input.file_path}`
+
+    const output = {
+        timestamp: new Date().toISOString(),
+        ...input,
+        stdout: result.stdout.toString(),
+        stderr: result.stderr.toString(),
+        exitCode: result.exitCode,
+    }
+    console.error(JSON.stringify(output, null, 2))
+
+    const logFilePath = join(input.workspace_roots[0]!, "logs", "after-file-edit.jsonl")
+
+    // Check if log file exists and count entries
+    let logContent = ""
+    try {
+        logContent = await readFile(logFilePath, "utf-8")
+    } catch (_error) {
+        // File doesn't exist yet, that's fine
+    }
+
+    // Count JSON objects by counting opening braces at the start of lines
+    const entryCount = (logContent.match(/^\s*\{/gm) || []).length
+
+    // If we have more than 500 entries, remove the first 100
+    if (entryCount >= 500) {
+        const lines = logContent.trim().split('\n')
+        const jsonObjects: string[] = []
+        let currentObject = ""
+        let braceCount = 0
+
+        // Parse JSON objects from the content
+        for (const line of lines) {
+            currentObject += `${line}\n`
+            braceCount += (line.match(/\{/g) || []).length
+            braceCount -= (line.match(/\}/g) || []).length
+
+            if (braceCount === 0 && currentObject.trim()) {
+                jsonObjects.push(currentObject.trim())
+                currentObject = ""
+            }
+        }
+
+        // Keep only the last (total - 100) entries
+        const entriesToKeep = jsonObjects.slice(100)
+        const trimmedContent = `${entriesToKeep.join('\n')}\n`
+
+        await writeFile(logFilePath, trimmedContent)
+    }
+
+    await appendFile(logFilePath, JSON.stringify(output, null, 2))
+}
+```
+
+## Available Hook Types
+
+### beforeShellExecution
+
+Intercept and control shell commands before execution.
+
+**Payload:** `BeforeShellExecutionPayload`
+- `command`: The shell command to execute
+- `workspace_roots`: Array of workspace root paths
+- `hook_event_name`: "beforeShellExecution"
+
+**Response:** `BeforeShellExecutionResponse`
+- `permission`: "allow" | "deny" | "ask"
+- `agentMessage?`: Message shown to the AI agent
+- `userMessage?`: Message shown to the user
+
+### beforeSubmitPrompt
+
+Control whether prompts are submitted to the AI.
+
+**Payload:** `BeforeSubmitPromptPayload`
+- `prompt`: The user's prompt text
+- `workspace_roots`: Array of workspace root paths
+- `hook_event_name`: "beforeSubmitPrompt"
+
+**Response:** `BeforeSubmitPromptResponse`
+- `continue`: boolean - whether to allow the prompt
+
+### afterFileEdit
+
+React to file edits made by the AI agent.
+
+**Payload:** `AfterFileEditPayload`
+- `file_path`: Path to the edited file
+- `edits`: Array of edit operations
+- `workspace_roots`: Array of workspace root paths
+- `hook_event_name`: "afterFileEdit"
+
+**Response:** None (this is a notification hook)
+
+### beforeReadFile
+
+Control file access before the AI reads a file.
+
+**Payload:** `BeforeReadFilePayload`
+- `file_path`: Path to the file being read
+- `content`: The file contents
+- `workspace_roots`: Array of workspace root paths
+- `hook_event_name`: "beforeReadFile"
+
+**Response:** `BeforeReadFileResponse`
+- `permission`: "allow" | "deny"
+- `agentMessage?`: Message shown to the AI agent
+- `userMessage?`: Message shown to the user
+
+### beforeMCPExecution
+
+Control MCP tool execution before it runs.
+
+**Payload:** `BeforeMCPExecutionPayload`
+- `tool_name`: Name of the MCP tool
+- `arguments`: Tool arguments
+- `workspace_roots`: Array of workspace root paths
+- `hook_event_name`: "beforeMCPExecution"
+
+**Response:** `BeforeMCPExecutionResponse`
+- `permission`: "allow" | "deny" | "ask"
+- `agentMessage?`: Message shown to the AI agent
+- `userMessage?`: Message shown to the user
+
+### stop
+
+Notification when the AI agent finishes execution.
+
+**Payload:** `StopPayload`
+- `status`: The completion status
+- `workspace_roots`: Array of workspace root paths
+- `hook_event_name`: "stop"
+
+**Response:** None (this is a notification hook)
+
+## Type Safety Helpers
+
+### isHookPayloadOf
+
+Validate and narrow hook payload types:
+
+```ts
+import { isHookPayloadOf } from "cursor-hooks";
+
+const rawInput: unknown = await Bun.stdin.json();
+
+if (isHookPayloadOf(rawInput, "beforeShellExecution")) {
+  // TypeScript now knows rawInput is BeforeShellExecutionPayload
+  console.log(rawInput.command);
+}
+```
+
+## JSON Schema Validation
+
+Add schema validation to your `hooks.json`:
 
 ```json
 {
@@ -80,221 +259,25 @@ Author your configuration files with JSON Schema validation by pointing `$schema
   "version": 1,
   "hooks": {
     "afterFileEdit": [
-      { "command": "bun run ./hooks/format.ts" }
+      { "command": "bun run .cursor/hooks/format.ts" }
     ]
   }
 }
 ```
 
-If you prefer a pinned version or have offline tooling, download `schema/hooks.schema.json` directly from this repository or install the package and reference it locally.
+## Development
 
-## Hook-by-hook templates
-
-### beforeShellExecution
-
-```ts
-import {
-  isHookPayloadOf,
-  type BeforeShellExecutionPayload,
-  type BeforeShellExecutionResponse,
-} from "cursor-hooks";
-
-export async function handleBeforeShellExecution(
-  payload: unknown,
-): Promise<BeforeShellExecutionResponse> {
-  if (!isHookPayloadOf(payload, "beforeShellExecution")) {
-    throw new Error("Invalid beforeShellExecution payload");
-  }
-
-  const input: BeforeShellExecutionPayload = payload;
-
-  if (input.command.includes("rm -rf")) {
-    return {
-      permission: "deny",
-      userMessage: "Dangerous command blocked.",
-      agentMessage: "Rejected destructive command.",
-    };
-  }
-
-  return { permission: "allow" };
-}
-```
-
-### beforeMCPExecution
-
-```ts
-import {
-  isHookPayloadOf,
-  type BeforeMCPExecutionPayload,
-  type BeforeMCPExecutionResponse,
-} from "cursor-hooks";
-
-export function handleBeforeMCPExecution(
-  payload: unknown,
-): BeforeMCPExecutionResponse {
-  if (!isHookPayloadOf(payload, "beforeMCPExecution")) {
-    throw new Error("Invalid beforeMCPExecution payload");
-  }
-
-  const input: BeforeMCPExecutionPayload = payload;
-
-  if (input.tool_name === "dangerousTool") {
-    return {
-      permission: "ask",
-      userMessage: "Tool requires confirmation.",
-      agentMessage: "Waiting for user approval.",
-    };
-  }
-
-  return { permission: "allow" };
-}
-```
-
-### afterFileEdit
-
-```ts
-import {
-  isHookPayloadOf,
-  type AfterFileEditPayload,
-} from "cursor-hooks";
-
-export async function handleAfterFileEdit(payload: unknown): Promise<void> {
-  if (!isHookPayloadOf(payload, "afterFileEdit")) {
-    throw new Error("Invalid afterFileEdit payload");
-  }
-
-  const input: AfterFileEditPayload = payload;
-
-  for (const edit of input.edits) {
-    console.error(`Edited ${input.file_path}:`, edit);
-  }
-}
-```
-
-### beforeReadFile
-
-```ts
-import {
-  isHookPayloadOf,
-  type BeforeReadFilePayload,
-  type BeforeReadFileResponse,
-} from "cursor-hooks";
-
-export function handleBeforeReadFile(
-  payload: unknown,
-): BeforeReadFileResponse {
-  if (!isHookPayloadOf(payload, "beforeReadFile")) {
-    throw new Error("Invalid beforeReadFile payload");
-  }
-
-  const input: BeforeReadFilePayload = payload;
-  const containsSecret = input.content.includes("API_KEY");
-
-  return containsSecret
-    ? { permission: "deny" }
-    : { permission: "allow" };
-}
-```
-
-### beforeSubmitPrompt
-
-```ts
-import {
-  isHookPayloadOf,
-  type BeforeSubmitPromptPayload,
-  type BeforeSubmitPromptResponse,
-} from "cursor-hooks";
-
-export function handleBeforeSubmitPrompt(
-  payload: unknown,
-): BeforeSubmitPromptResponse {
-  if (!isHookPayloadOf(payload, "beforeSubmitPrompt")) {
-    throw new Error("Invalid beforeSubmitPrompt payload");
-  }
-
-  const input: BeforeSubmitPromptPayload = payload;
-
-  if (input.prompt.length > 2000) {
-    return {
-      continue: false,
-    };
-  }
-
-  return { continue: true };
-}
-```
-
-### stop
-
-```ts
-import {
-  isHookPayloadOf,
-  type StopPayload,
-} from "cursor-hooks";
-
-export function handleStop(payload: unknown): void {
-  if (!isHookPayloadOf(payload, "stop")) {
-    throw new Error("Invalid stop payload");
-  }
-
-  const input: StopPayload = payload;
-  console.error(`Agent finished with status: ${input.status}`);
-}
-```
-
-## Combining handlers
-
-Wire multiple handlers together with a map keyed by `hook_event_name`:
-
-```ts
-import {
-  type HookEventName,
-  type HookHandler,
-  type HookPayload,
-} from "cursor-hooks";
-import {
-  handleAfterFileEdit,
-  handleBeforeMCPExecution,
-  handleBeforeReadFile,
-  handleBeforeShellExecution,
-  handleBeforeSubmitPrompt,
-  handleStop,
-} from "./handlers.ts";
-
-const handlers: Partial<Record<HookEventName, HookHandler<HookEventName>>> = {
-  beforeShellExecution: handleBeforeShellExecution,
-  beforeMCPExecution: handleBeforeMCPExecution,
-  afterFileEdit: handleAfterFileEdit,
-  beforeReadFile: handleBeforeReadFile,
-  beforeSubmitPrompt: handleBeforeSubmitPrompt,
-  stop: handleStop,
-};
-
-const payload = JSON.parse(await Bun.stdin.text()) as HookPayload;
-const handler = handlers[payload.hook_event_name];
-
-if (handler) {
-  const response = await handler(payload as never);
-  if (response !== undefined) {
-    console.log(JSON.stringify(response));
-  }
-} else {
-  console.error(`No handler for ${payload.hook_event_name}`);
-  process.exit(1);
-}
-```
-
-## Build
+### Build
 
 ```bash
 npm run build
 ```
 
-## Release automation
+### Release
 
-- Follow [Conventional Commits](https://www.conventionalcommits.org/) so `semantic-release` can determine the next version.
-- CI publishes to npm on pushes to `main`; release metadata never commits back to the repo.
-- Run `./scripts/setup-publish.sh` once to create an npm token and store it as the `NPM_TOKEN` GitHub secret via CLI prompts.
+- Follow [Conventional Commits](https://www.conventionalcommits.org/) for automatic versioning
+- CI automatically publishes to npm on pushes to `main`
+- Run `./scripts/setup-publish.sh` to configure npm token
 
 ## License
 
