@@ -128,48 +128,8 @@ if (input.file_path.endsWith(".ts")) {
         stderr: result.stderr.toString(),
         exitCode: result.exitCode,
     }
+    // only console.errors show in the logs
     console.error(JSON.stringify(output, null, 2))
-
-    const logFilePath = join(input.workspace_roots[0]!, "logs", "after-file-edit.jsonl")
-
-    // Check if log file exists and count entries
-    let logContent = ""
-    try {
-        logContent = await readFile(logFilePath, "utf-8")
-    } catch (_error) {
-        // File doesn't exist yet, that's fine
-    }
-
-    // Count JSON objects by counting opening braces at the start of lines
-    const entryCount = (logContent.match(/^\s*\{/gm) || []).length
-
-    // If we have more than 500 entries, remove the first 100
-    if (entryCount >= 500) {
-        const lines = logContent.trim().split('\n')
-        const jsonObjects: string[] = []
-        let currentObject = ""
-        let braceCount = 0
-
-        // Parse JSON objects from the content
-        for (const line of lines) {
-            currentObject += `${line}\n`
-            braceCount += (line.match(/\{/g) || []).length
-            braceCount -= (line.match(/\}/g) || []).length
-
-            if (braceCount === 0 && currentObject.trim()) {
-                jsonObjects.push(currentObject.trim())
-                currentObject = ""
-            }
-        }
-
-        // Keep only the last (total - 100) entries
-        const entriesToKeep = jsonObjects.slice(100)
-        const trimmedContent = `${entriesToKeep.join('\n')}\n`
-
-        await writeFile(logFilePath, trimmedContent)
-    }
-
-    await appendFile(logFilePath, JSON.stringify(output, null, 2))
 }
 ```
 
