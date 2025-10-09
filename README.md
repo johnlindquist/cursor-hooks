@@ -53,7 +53,23 @@ This configuration assumes your hooks are in `.cursor/hooks/` and the `hooks.jso
 
 ### 5. Enable JSON Schema validation (optional)
 
-Add this to your Cursor settings (`~/Library/Application Support/Cursor/User/settings.json` on macOS) to get autocomplete and validation:
+You can enable schema validation in two ways:
+
+**Option A:** Add `$schema` directly to your `hooks.json`:
+
+```json
+{
+  "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      { "command": "bun run hooks/after-file-edit.ts" }
+    ]
+  }
+}
+```
+
+**Option B:** Configure it globally in your Cursor settings (`~/Library/Application Support/Cursor/User/settings.json` on macOS):
 
 ```json
 {
@@ -228,28 +244,12 @@ if (isHookPayloadOf(rawInput, "beforeShellExecution")) {
 }
 ```
 
-## JSON Schema Validation
-
-Add schema validation to your `hooks.json`:
-
-```json
-{
-  "$schema": "https://unpkg.com/cursor-hooks@latest/schema/hooks.schema.json",
-  "version": 1,
-  "hooks": {
-    "afterFileEdit": [
-      { "command": "bun run .cursor/hooks/format.ts" }
-    ]
-  }
-}
-```
-
 ## Development
 
 ### Build
 
 ```bash
-npm run build
+bun run build
 ```
 
 ### Release
