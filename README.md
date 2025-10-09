@@ -51,6 +51,24 @@ In your `.cursor` directory (at the project root), create a `hooks.json` file.
 
 This configuration assumes your hooks are in `.cursor/hooks/` and the `hooks.json` is at `.cursor/hooks.json`.
 
+### 5. Enable JSON Schema validation (optional)
+
+Add this to your Cursor settings (`~/Library/Application Support/Cursor/User/settings.json` on macOS) to get autocomplete and validation:
+
+```json
+{
+  "json.validate.enable": true,
+  "json.format.enable": true,
+  "json.schemaDownload.enable": true,
+  "json.schemas": [
+    {
+      "fileMatch": [".cursor/hooks.json"],
+      "url": "https://unpkg.com/cursor-hooks/schema/hooks.schema.json"
+    }
+  ]
+}
+```
+
 ## Real-world Examples
 
 ### Example 1: Block npm commands, enforce bun
