@@ -113,9 +113,6 @@ console.log(JSON.stringify(output, null, 2));
 ```ts
 import type { AfterFileEditPayload } from "cursor-hooks";
 
-import { appendFile, readFile, writeFile } from "node:fs/promises"
-import { join } from "node:path"
-
 const input: AfterFileEditPayload = await Bun.stdin.json();
 
 if (input.file_path.endsWith(".ts")) {
